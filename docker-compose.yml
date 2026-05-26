@@ -1,0 +1,48 @@
+services:
+  api:
+    build: ./api
+    ports: ["8200:8200"]
+    volumes:
+      - ./data:/data
+      - ./api/schema.sql:/app/schema.sql:ro
+    environment:
+      ORCHESTRA_DB: /data/orchestra.db
+      ORCHESTRA_SKILLS_DIRS: /skills
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    ports: ["8201:80"]
+    depends_on: [api]
+    restart: unless-stopped
+
+  orchestrator:
+    build: ./orchestrator
+    depends_on: [api]
+    environment:
+      CONSOLE_URL: http://api:8200
+      CLAUDE_PATH: claude
+      WORKSPACE_DIR: /workspace
+      FRENTES: ""
+      MAX_WORKERS: "2"
+      MAX_BUDGET_USD: "10.0"
+    volumes:
+      - ./workspace:/workspace
+      - ./briefs:/briefs
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    profiles: ["ollama"]
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
